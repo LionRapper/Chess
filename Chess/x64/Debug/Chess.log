@@ -1,0 +1,3 @@
+﻿  Chess.cpp
+C:\Users\levre\source\repos\Chess\Chess\Chess.cpp(417): warning C4715: 'findKing': not all control paths return a value
+  Chess.vcxproj -> C:\Users\levre\source\repos\Chess\x64\Debug\Chess.exe
