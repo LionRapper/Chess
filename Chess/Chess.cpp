@@ -156,10 +156,12 @@ void OutPiece(Piece piece) {
         break;
     }
     // white or black
-    if (piece.isWhite)
-        cout << "w";
-    else
-        cout << "b";
+    if (piece.type != NONE) {
+        if (piece.isWhite)
+            cout << "w";
+        else
+            cout << "b";
+    }
 }
 
 void MovePiece(Piece board[8][8], int movePiece) {
@@ -177,13 +179,19 @@ void MovePiece(Piece board[8][8], int movePiece) {
         }
     }
 
-    // set justMovedTwo for the moved pawn
-    if (board[x1][y1].type == 1 && abs(x1 - x2) == 2) {
-        board[x2][y2].justMovedTwo = true;
+    // set justMovedTwo for the unmoved pawn
+    if (board[x2][y2].type == PAWN) {
+        if (abs(x1 - x2) == 2) {
+            board[x1][y1].justMovedTwo = true;
+            board[x2][y2].justMovedTwo = true;
+        }
     }
 
-    board[x2][y2].type = board[x1][y1].type;
-    //board[x1][y1].type = NONE;
+    cout << "setting value of x2y2 to x1y1, ";
+    
+    // move
+    board[x1][y1] = board[x2][y2];
+    board[x1][y1].type = NONE;
 }
 
 
@@ -197,26 +205,20 @@ bool IsLegal(Piece board[8][8], int movePiece, int round) {
     if (board[x1][y1].isWhite != (round % 2 == 1)) {
         return false;
     }
-    cout << "Is correct collor, ";
 
     // check if the destination is a valid location
     if (x2 < 0 || x2 > 7 || y2 < 0 || y2 > 7) {
         return false;
     }
 
-    cout << "dest is in board, ";
-
     // check if the destination is occupied by a piece of the same color
     if (board[x1][y1].isWhite == board[x2][y2].isWhite && board[x2][y2].type != 0) {
         return false;
     }
 
-    cout << "dest in is not occ by same team piece, ";
-
     // check if the move is legal based on the type of piece
     switch (board[x1][y1].type) {
     case 1:
-        cout << "starting pawn check, ";
         if (!Pawn(board, x1, y1, x2, y2)) {
             return false;
         }
@@ -251,44 +253,49 @@ bool IsLegal(Piece board[8][8], int movePiece, int round) {
     Piece king = findKing(round % 2 == 1, board);
     
     board[x2][y2] = board[x1][y1];
-    board[x1][y1].type = 0;
+    board[x1][y1].type = NONE;
 
     if (IsInCheck(king, board)) {
         return false;
     }
-
     return true;
 }
 
 bool Pawn(Piece board[8][8], int x1, int y1, int x2, int y2) {
     // check if the move is within the pawn's normal range
     if (board[x1][y1].isWhite) {
-        if (x1 == 6 && (x2 == 4 || x2 == 5) && y1 == y2) {
-            return true;
-        }
-        if (x1 - x2 == 1 && y1 == y2) {
-            return true;
+        if (board[x2][y2].type == NONE) {
+            if (x1 == 6 && (x2 == 4 || x2 == 5) && y1 == y2) {
+                return true;
+            }
+            if (x1 - x2 == 1 && y1 == y2) {
+                return true;
+            }
         }
         if (x1 - x2 == 1 && abs(y1 - y2) == 1 && board[x2][y2].type != 0) {
             return true;
         }
-        // en passant
-        if (x1 == 3 && x2 == 2 && abs(y1 - y2) == 1 && board[x2][y1].type == 1 && board[x2][y1].justMovedTwo) {
+        // en passant does not work
+        if (x1 - x2 == 1 && abs(y1 - y2) == 1 && board[x2 + 1][y2].justMovedTwo) {
+            board[x2 + 1][y2].type = NONE;
             return true;
         }
     }
     else {
-        if (x1 == 1 && (x2 == 2 || x2 == 3) && y1 == y2) {
-            return true;
-        }
-        if (x2 - x1 == 1 && y1 == y2) {
-            return true;
+        if (board[x2][y2].type == NONE) {
+            if (x1 == 1 && (x2 == 2 || x2 == 3) && y1 == y2) {
+                return true;
+            }
+            if (x2 - x1 == 1 && y1 == y2) {
+                return true;
+            }
         }
         if (x2 - x1 == 1 && abs(y1 - y2) == 1 && board[x2][y2].type != 0) {
             return true;
         }
-        // en passant
-        if (x1 == 4 && x2 == 5 && abs(y1 - y2) == 1 && board[x2][y1].type == 1 && board[x2][y1].justMovedTwo) {
+        // en passant does not work
+        if (x2 - x1 == 1 && abs(y1 - y2) == 1 && board[x2 - 1][y1].justMovedTwo) {
+            board[x2 - 1][y1].type = NONE;
             return true;
         }
     }
@@ -328,6 +335,8 @@ bool Rook(Piece board[8][8], int x1, int y1, int x2, int y2) {
     if (board[x2][y2].isWhite == board[x1][y1].isWhite && board[x2][y2].type != 0) {
         return false;
     }
+
+    board[x1][y1].hasMoved = true;
     return true;
 }
 
@@ -377,6 +386,7 @@ bool King(Piece board[8][8], int x1, int y1, int x2, int y2) {
     }
     else if (abs(x1 - x2) == 2 && abs(y1 - y2) == 0 && !board[x1][y1].hasMoved) {
         // check if the move is a castling move
+        Piece king = findKing(board[x1][y1].isWhite, board);
         if (x1 < x2) { // check if castling kingside
             if (board[7][7].hasMoved || board[7][5].type != 0 || board[7][6].type != 0) {
                 return false;
@@ -387,8 +397,7 @@ bool King(Piece board[8][8], int x1, int y1, int x2, int y2) {
                 return false;
             }
         }
-        // check if the king is in check before making the move
-        Piece king = findKing(board[x1][y1].isWhite, board);
+        // check if the king is in check before making the move  
         if (IsInCheck(king, board)) {
             return false;
         }
@@ -553,3 +562,14 @@ bool IsInCheck(Piece king, Piece board[8][8]) {
     // if none of the above conditions are true, the king is not in check
     return false;
 }
+
+/*
+castle:
+2737
+7555
+1638
+7565
+1736
+7454
+1517
+*/
